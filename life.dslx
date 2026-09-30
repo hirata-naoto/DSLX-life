@@ -1,0 +1,71 @@
+pub fn next_generation(board: u64) -> u64 {
+    for (cell, next_board): (u32, u64) in u32:0..u32:64 {
+        let row = cell / u32:8;
+        let col = cell % u32:8;
+        let neighbors = for (dy, count): (u32, u4) in u32:0..u32:3 {
+            for (dx, count): (u32, u4) in u32:0..u32:3 {
+                let neighbor_row = row + dy - u32:1;
+                let neighbor_col = col + dx - u32:1;
+                let is_neighbor = (dy != u32:1 || dx != u32:1)
+                    && neighbor_row < u32:8
+                    && neighbor_col < u32:8;
+                let neighbor_index = neighbor_row * u32:8 + neighbor_col;
+                let alive = ((board >> neighbor_index) as u1) == u1:1;
+                count + (if is_neighbor && alive { u4:1 } else { u4:0 })
+            } (count)
+        } (u4:0);
+        let alive = ((board >> cell) as u1) == u1:1;
+        let survives = alive && (neighbors == u4:2 || neighbors == u4:3);
+        let is_born = !alive && neighbors == u4:3;
+        let next_alive = survives || is_born;
+        if next_alive {
+            next_board | (u64:1 << cell)
+        } else {
+            next_board
+        }
+    } (u64:0)
+}
+
+pub fn game_step(board: u64, advance: bool) -> u64 {
+    if advance { next_generation(board) } else { board }
+}
+
+pub fn display_scan(board: u64, row: u3) -> (u8, u8) {
+    let columns = for (col, pattern): (u32, u8) in u32:0..u32:8 {
+        let index = (row as u32) * u32:8 + col;
+        let alive = ((board >> index) as u1) == u1:1;
+        if alive {
+            pattern | (u8:1 << (u32:7 - col))
+        } else {
+            pattern
+        }
+    } (u8:0);
+    (u8:1 << (row as u32), columns)
+}
+
+#[test]
+fn still_life_block_is_stable() {
+    assert_eq(next_generation(u64:0x0000001818000000), u64:0x0000001818000000);
+}
+
+#[test]
+fn blinker_oscillates() {
+    assert_eq(next_generation(u64:0x000000001c000000), u64:0x0000000808080000);
+    assert_eq(next_generation(u64:0x0000000808080000), u64:0x000000001c000000);
+}
+
+#[test]
+fn isolated_cell_dies() {
+    assert_eq(next_generation(u64:0x0000000008000000), u64:0);
+}
+
+#[test]
+fn paused_step_holds_board() {
+    let board = u64:0x000000001c000000;
+    assert_eq(game_step(board, false), board);
+}
+
+#[test]
+fn display_scan_selects_row_and_columns() {
+    assert_eq(display_scan(u64:0x000000001c000000, u3:3), (u8:8, u8:0x38));
+}
